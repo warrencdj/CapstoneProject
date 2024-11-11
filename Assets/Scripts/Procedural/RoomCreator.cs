@@ -23,6 +23,10 @@ public class RoomCreator : MonoBehaviour
     public GameObject monsterPrefab; // Reference to the monster prefab
     public float minimumMonsterDistance = 5f; // Minimum distance from the player for monster spawning
 
+    public GameObject npcPrefab; // Reference to the NPC prefab
+    public int maxNPCs = 5; // Maximum number of NPCs to spawn
+    private int currentNPCCount = 0; // Tracks how many NPCs are currently spawned
+
     public GameObject[] roomAssets; // Array of asset prefabs to randomly place in rooms
     public int maxAssetsPerRoom = 3; // Maximum number of assets to spawn per room
     public float assetSpawnOffset = 1f; // Offset to avoid wall collisions when spawning assets
@@ -70,6 +74,7 @@ public class RoomCreator : MonoBehaviour
         // Spawn player and monsters
         playerSpawnPosition = SpawnPlayerInRandomRoom(listOfRooms);
         SpawnMonstersInOtherRooms(listOfRooms);
+        SpawnNPCsInRooms(listOfRooms);
     }
 
 
@@ -263,6 +268,30 @@ public class RoomCreator : MonoBehaviour
     {
         Vector3 spawnPosition = GetRoomCenter(room);
         Instantiate(monsterPrefab, spawnPosition, Quaternion.identity);
+    }
+
+    private void SpawnNPCsInRooms(List<Node> listOfRooms)
+    {
+        List<RoomNode> roomNodes = GetRoomNodes(listOfRooms);
+
+        foreach (RoomNode room in roomNodes)
+        {
+            if (currentNPCCount < maxNPCs)
+            {
+                SpawnNPC(room);
+            }
+            else
+            {
+                break; // Stop spawning if maxNPCs is reached
+            }
+        }
+    }
+
+    private void SpawnNPC(RoomNode room)
+    {
+        Vector3 spawnPosition = GetRoomCenter(room);
+        Instantiate(npcPrefab, spawnPosition, Quaternion.identity);
+        currentNPCCount++; // Increment NPC count after each spawn
     }
 
     private void SpawnAssetsInRooms(List<Node> listOfRooms)
