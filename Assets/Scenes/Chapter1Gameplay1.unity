@@ -506,7 +506,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1669851722}
   - component: {fileID: 1669851723}
-  m_Layer: 0
+  - component: {fileID: 1669851724}
+  m_Layer: 6
   m_Name: RoomCreator
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -558,6 +559,43 @@ MonoBehaviour:
   monsterPrefab: {fileID: 5843910060404403023, guid: 2ca7ca2d6d31e4d4ea7b67fd0fb9b338,
     type: 3}
   minimumMonsterDistance: 20
+  roomAssets:
+  - {fileID: 7533680284516324175, guid: 6ecb9c13bf0568c4484dd9f18626fc46, type: 3}
+  - {fileID: 1533800169398616301, guid: 25ad9121adecfbf42abab1b83ee73d6f, type: 3}
+  maxAssetsPerRoom: 3
+  assetSpawnOffset: 1
+  floorHeight: 0.1
+--- !u!114 &1669851724
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1669851720}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_AgentTypeID: 0
+  m_CollectObjects: 0
+  m_Size: {x: 10, y: 10, z: 10}
+  m_Center: {x: 0, y: 2, z: 0}
+  m_LayerMask:
+    serializedVersion: 2
+    m_Bits: 64
+  m_UseGeometry: 0
+  m_DefaultArea: 0
+  m_GenerateLinks: 0
+  m_IgnoreNavMeshAgent: 1
+  m_IgnoreNavMeshObstacle: 1
+  m_OverrideTileSize: 0
+  m_TileSize: 256
+  m_OverrideVoxelSize: 0
+  m_VoxelSize: 0.16666667
+  m_MinRegionArea: 2
+  m_NavMeshData: {fileID: 0}
+  m_BuildHeightMesh: 0
 --- !u!1001 &1683320930
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -855,30 +893,6 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!114 &1147758476291537726
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8615166244438282303}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 03f016a1d8799424d86ebbe5fc03a593, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  cameraTransform: {fileID: 5020173378713261792}
-  characterController: {fileID: 6136949133461320134}
-  joystick: {fileID: 1465730526}
-  cameraSensitivity: 10
-  moveSpeed: 5
-  cameraDistance: 10
-  cameraHeight: 1.5
-  cameraCollisionBuffer: 0.2
-  collisionLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  isThirdPersonView: 1
 --- !u!1 &1677992172082632420
 GameObject:
   m_ObjectHideFlags: 0
@@ -890,7 +904,7 @@ GameObject:
   - component: {fileID: 5020173378713261792}
   - component: {fileID: 457149704370744405}
   - component: {fileID: 3015041761017564858}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Camera
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -955,7 +969,7 @@ MeshCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 5
@@ -971,7 +985,7 @@ Transform:
   m_GameObject: {fileID: 1677992172082632420}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0.66, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1074,10 +1088,10 @@ GameObject:
   - component: {fileID: 6344372482651966560}
   - component: {fileID: 8934990183916699539}
   - component: {fileID: 6136949133461320134}
-  - component: {fileID: 1147758476291537726}
+  - component: {fileID: 8934990183916699540}
   - component: {fileID: 4842943775479358171}
   - component: {fileID: 3606429521938671182}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Player
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -1099,7 +1113,7 @@ CapsuleCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
@@ -1107,6 +1121,23 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &8934990183916699540
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8615166244438282303}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c73e7ff26e4c66b4ab80072a8b77676b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cameraTransform: {fileID: 5020173378713261792}
+  characterController: {fileID: 6136949133461320134}
+  joystick: {fileID: 1465730526}
+  cameraSensitivity: 5
+  moveSpeed: 5
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

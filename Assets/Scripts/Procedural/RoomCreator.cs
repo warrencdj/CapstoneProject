@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.AI.Navigation;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class RoomCreator : MonoBehaviour
 {
@@ -21,12 +23,17 @@ public class RoomCreator : MonoBehaviour
     public GameObject monsterPrefab; // Reference to the monster prefab
     public float minimumMonsterDistance = 5f; // Minimum distance from the player for monster spawning
 
+    public GameObject[] roomAssets; // Array of asset prefabs to randomly place in rooms
+    public int maxAssetsPerRoom = 3; // Maximum number of assets to spawn per room
+    public float assetSpawnOffset = 1f; // Offset to avoid wall collisions when spawning assets
+    public float floorHeight = 0.1f; // Adjust based on floor thickness
+
     private Vector3 playerSpawnPosition;
 
-    List<Vector3Int> possibleDoorVerticalPosition;
-    List<Vector3Int> possibleDoorHorizontalPosition;
-    List<Vector3Int> possibleWallHorizontalPosition;
-    List<Vector3Int> possibleWallVerticalPosition;
+    private List<Vector3Int> possibleDoorVerticalPosition;
+    private List<Vector3Int> possibleDoorHorizontalPosition;
+    private List<Vector3Int> possibleWallHorizontalPosition;
+    private List<Vector3Int> possibleWallVerticalPosition;
 
     void Start()
     {
@@ -40,23 +47,49 @@ public class RoomCreator : MonoBehaviour
 
         GameObject wallParent = new GameObject("WallParent");
         wallParent.transform.parent = transform;
+
         possibleDoorVerticalPosition = new List<Vector3Int>();
         possibleDoorHorizontalPosition = new List<Vector3Int>();
         possibleWallHorizontalPosition = new List<Vector3Int>();
         possibleWallVerticalPosition = new List<Vector3Int>();
 
-        for (int i = 0; i < listOfRooms.Count; i++)
+        // Generate the room mesh, walls, and spawn assets for each room
+        foreach (var room in listOfRooms)
         {
-            CreateMesh(listOfRooms[i].BottomLeftAreaCorner, listOfRooms[i].TopRightAreaCorner);
+            // Create the mesh for this room
+            CreateMesh(room.BottomLeftAreaCorner, room.TopRightAreaCorner);
+
+            // Spawn assets in the current room
+            List<Node> singleRoomList = new List<Node> { room }; // Wrap the room in a list
+            SpawnAssetsInRooms(singleRoomList); // Spawn assets for the current room only
         }
 
         CreateWalls(wallParent);
+        BuildNavMesh();
 
-        // Spawn the player in a random room
+        // Spawn player and monsters
         playerSpawnPosition = SpawnPlayerInRandomRoom(listOfRooms);
-
-        // Spawn monsters in other rooms
         SpawnMonstersInOtherRooms(listOfRooms);
+    }
+
+
+    private void BuildNavMesh()
+    {
+        NavMeshSurface[] surfaces = FindObjectsOfType<NavMeshSurface>();
+
+        if (surfaces.Length == 0)
+        {
+            NavMeshSurface surface = gameObject.AddComponent<NavMeshSurface>();
+            surface.agentTypeID = 0; // Optional: Set agent type ID as needed
+            surface.BuildNavMesh(); // Build the NavMesh after room generation
+        }
+        else
+        {
+            foreach (var surface in surfaces)
+            {
+                surface.BuildNavMesh(); // Rebuild existing surfaces if any
+            }
+        }
     }
 
     private void CreateWalls(GameObject wallParent)
@@ -78,57 +111,74 @@ public class RoomCreator : MonoBehaviour
 
     private void CreateMesh(Vector2 bottomLeftCorner, Vector2 topRightCorner)
     {
+        // Create room floor mesh
+        Vector3[] vertices = GetRoomVertices(bottomLeftCorner, topRightCorner);
+        Vector2[] uvs = GetRoomUVs(vertices);
+        int[] triangles = GetRoomTriangles();
+
+        Mesh mesh = new Mesh { vertices = vertices, uv = uvs, triangles = triangles };
+        GameObject roomFloor = CreateRoomFloorObject(mesh, bottomLeftCorner, topRightCorner);
+
+        // Add NavMesh surface to room floor and build
+        NavMeshSurface navMeshSurface = roomFloor.AddComponent<NavMeshSurface>();
+        navMeshSurface.BuildNavMesh();
+
+        // Add wall positions to the list
+        AddWallsToPositionLists(vertices, bottomLeftCorner, topRightCorner);
+    }
+
+    private Vector3[] GetRoomVertices(Vector2 bottomLeftCorner, Vector2 topRightCorner)
+    {
         Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, 0, bottomLeftCorner.y);
         Vector3 bottomRightV = new Vector3(topRightCorner.x, 0, bottomLeftCorner.y);
         Vector3 topLeftV = new Vector3(bottomLeftCorner.x, 0, topRightCorner.y);
         Vector3 topRightV = new Vector3(topRightCorner.x, 0, topRightCorner.y);
 
-        Vector3[] vertices = new Vector3[] { topLeftV, topRightV, bottomLeftV, bottomRightV };
+        return new Vector3[] { topLeftV, topRightV, bottomLeftV, bottomRightV };
+    }
 
+    private Vector2[] GetRoomUVs(Vector3[] vertices)
+    {
         Vector2[] uvs = new Vector2[vertices.Length];
         for (int i = 0; i < uvs.Length; i++)
         {
             uvs[i] = new Vector2(vertices[i].x, vertices[i].z);
         }
+        return uvs;
+    }
 
-        int[] triangles = new int[] { 0, 1, 2, 2, 1, 3 };
+    private int[] GetRoomTriangles()
+    {
+        return new int[] { 0, 1, 2, 2, 1, 3 };
+    }
 
-        Mesh mesh = new Mesh();
-        mesh.vertices = vertices;
-        mesh.uv = uvs;
-        mesh.triangles = triangles;
-
+    private GameObject CreateRoomFloorObject(Mesh mesh, Vector2 bottomLeftCorner, Vector2 topRightCorner)
+    {
         GameObject roomFloor = new GameObject("Mesh" + bottomLeftCorner, typeof(MeshFilter), typeof(MeshRenderer));
-
         roomFloor.transform.position = Vector3.zero;
         roomFloor.transform.localScale = Vector3.one;
         roomFloor.GetComponent<MeshFilter>().mesh = mesh;
         roomFloor.GetComponent<MeshRenderer>().material = material;
 
-        // Add a BoxCollider to the room floor
+        // Add BoxCollider with appropriate size
         BoxCollider boxCollider = roomFloor.AddComponent<BoxCollider>();
-        boxCollider.size = new Vector3(topRightCorner.x - bottomLeftCorner.x, 0.1f, topRightCorner.y - bottomLeftCorner.y); // Set height to 0.1f
-        boxCollider.center = new Vector3((bottomLeftCorner.x + topRightCorner.x) / 2, 0.05f, (bottomLeftCorner.y + topRightCorner.y) / 2); // Center slightly above the ground
+        boxCollider.size = new Vector3(topRightCorner.x - bottomLeftCorner.x, 0.1f, topRightCorner.y - bottomLeftCorner.y);
+        boxCollider.center = new Vector3((bottomLeftCorner.x + topRightCorner.x) / 2, 0.05f, (bottomLeftCorner.y + topRightCorner.y) / 2);
 
-        for (int row = (int)bottomLeftV.x; row < (int)bottomRightV.x; row++)
+        return roomFloor;
+    }
+
+    private void AddWallsToPositionLists(Vector3[] vertices, Vector2 bottomLeftCorner, Vector2 topRightCorner)
+    {
+        for (int row = (int)bottomLeftCorner.x; row < (int)topRightCorner.x; row++)
         {
-            var wallPosition = new Vector3(row, 0, bottomLeftV.z);
-            AddWallPositionToList(wallPosition, possibleWallHorizontalPosition, possibleDoorHorizontalPosition);
+            AddWallPositionToList(new Vector3(row, 0, bottomLeftCorner.y), possibleWallHorizontalPosition, possibleDoorHorizontalPosition);
+            AddWallPositionToList(new Vector3(row, 0, topRightCorner.y), possibleWallHorizontalPosition, possibleDoorHorizontalPosition);
         }
-        for (int row = (int)topLeftV.x; row < (int)topRightCorner.x; row++)
+        for (int col = (int)bottomLeftCorner.y; col < (int)topRightCorner.y; col++)
         {
-            var wallPosition = new Vector3(row, 0, topRightV.z);
-            AddWallPositionToList(wallPosition, possibleWallHorizontalPosition, possibleDoorHorizontalPosition);
-        }
-        for (int col = (int)bottomLeftV.z; col < (int)topLeftV.z; col++)
-        {
-            var wallPosition = new Vector3(bottomLeftV.x, 0, col);
-            AddWallPositionToList(wallPosition, possibleWallVerticalPosition, possibleDoorVerticalPosition);
-        }
-        for (int col = (int)bottomRightV.z; col < (int)topRightV.z; col++)
-        {
-            var wallPosition = new Vector3(bottomRightV.x, 0, col);
-            AddWallPositionToList(wallPosition, possibleWallVerticalPosition, possibleDoorVerticalPosition);
+            AddWallPositionToList(new Vector3(bottomLeftCorner.x, 0, col), possibleWallVerticalPosition, possibleDoorVerticalPosition);
+            AddWallPositionToList(new Vector3(topRightCorner.x, 0, col), possibleWallVerticalPosition, possibleDoorVerticalPosition);
         }
     }
 
@@ -148,75 +198,115 @@ public class RoomCreator : MonoBehaviour
 
     private Vector3 SpawnPlayerInRandomRoom(List<Node> listOfRooms)
     {
-        // Filter for RoomNode types only
-        List<RoomNode> roomNodes = new List<RoomNode>();
-        foreach (Node node in listOfRooms)
-        {
-            if (node is RoomNode roomNode) // Safe casting
-            {
-                roomNodes.Add(roomNode);
-            }
-        }
+        List<RoomNode> roomNodes = GetRoomNodes(listOfRooms);
 
         if (roomNodes.Count > 0)
         {
-            // Randomly select a room node
             RoomNode randomRoom = roomNodes[UnityEngine.Random.Range(0, roomNodes.Count)];
+            Vector3 spawnPosition = GetRoomCenter(randomRoom);
 
-            // Calculate spawn position (using the center of the room)
-            Vector3 spawnPosition = new Vector3(
-                (randomRoom.BottomLeftAreaCorner.x + randomRoom.TopRightAreaCorner.x) / 2,
-                1.0f, // Adjust this value based on your player model's height
-                (randomRoom.BottomLeftAreaCorner.y + randomRoom.TopRightAreaCorner.y) / 2
-            );
-
-            // Move the existing player to the spawn position
             GameObject playerInstance = GameObject.FindGameObjectWithTag("Player");
             if (playerInstance != null)
             {
-                playerInstance.transform.position = spawnPosition; // Move the player to the spawn position
+                playerInstance.transform.position = spawnPosition;
             }
             else
             {
-                Debug.LogWarning("Player not found! Make sure the player is tagged as 'Player' and exists in the scene.");
+                Debug.LogWarning("Player not found! Ensure player is tagged as 'Player' and exists in the scene.");
             }
 
-            return spawnPosition; // Return the player's spawn position
+            return spawnPosition;
         }
         else
         {
             Debug.LogWarning("No RoomNodes available to spawn the player.");
-            return Vector3.zero; // Return a default position if no rooms are available
+            return Vector3.zero; // Default position if no room nodes available
         }
+    }
+
+    private List<RoomNode> GetRoomNodes(List<Node> listOfRooms)
+    {
+        List<RoomNode> roomNodes = new List<RoomNode>();
+        foreach (Node node in listOfRooms)
+        {
+            if (node is RoomNode roomNode)
+            {
+                roomNodes.Add(roomNode);
+            }
+        }
+        return roomNodes;
+    }
+
+    private Vector3 GetRoomCenter(RoomNode room)
+    {
+        return new Vector3(
+            (room.BottomLeftAreaCorner.x + room.TopRightAreaCorner.x) / 2,
+            1.0f, // Adjust based on player height
+            (room.BottomLeftAreaCorner.y + room.TopRightAreaCorner.y) / 2
+        );
     }
 
     private void SpawnMonstersInOtherRooms(List<Node> listOfRooms)
     {
-        foreach (var room in listOfRooms)
+        List<RoomNode> roomNodes = GetRoomNodes(listOfRooms);
+
+        foreach (RoomNode room in roomNodes)
         {
-            // Calculate the room boundaries
-            Vector2 bottomLeft = room.BottomLeftAreaCorner;
-            Vector2 topRight = room.TopRightAreaCorner;
-
-            // Randomly generate a position within the room's boundaries
-            Vector3 randomPosition = new Vector3(
-                UnityEngine.Random.Range(bottomLeft.x, topRight.x),
-                1.0f, // Adjust height if necessary
-                UnityEngine.Random.Range(bottomLeft.y, topRight.y)
-            );
-
-            // Check if the distance from the player is greater than the minimum distance
-            if (Vector3.Distance(randomPosition, playerSpawnPosition) > minimumMonsterDistance)
+            if (Vector3.Distance(playerSpawnPosition, GetRoomCenter(room)) >= minimumMonsterDistance)
             {
-                GameObject monsterInstance = Instantiate(monsterPrefab, randomPosition, Quaternion.identity);
-
-                // Get the Enemy component and set the player reference
-                Enemy enemy = monsterInstance.GetComponent<Enemy>();
-                if (enemy != null)
-                {
-                    enemy.player = GameObject.FindGameObjectWithTag("Player").transform; // Assuming your player has a "Player" tag
-                }
+                SpawnMonster(room);
             }
         }
     }
+
+    private void SpawnMonster(RoomNode room)
+    {
+        Vector3 spawnPosition = GetRoomCenter(room);
+        Instantiate(monsterPrefab, spawnPosition, Quaternion.identity);
+    }
+
+    private void SpawnAssetsInRooms(List<Node> listOfRooms)
+    {
+        List<RoomNode> roomNodes = GetRoomNodes(listOfRooms);
+
+        foreach (RoomNode room in roomNodes)
+        {
+            Vector3 roomCenter = GetRoomCenter(room);
+            SpawnAssetsInRoom(room, roomCenter);
+        }
+    }
+
+    private void SpawnAssetsInRoom(RoomNode room, Vector3 roomCenter)
+    {
+        // Generate random points within the room's area
+        List<Vector3> spawnPoints = GetRandomSpawnPoints(room, maxAssetsPerRoom);
+
+        foreach (Vector3 point in spawnPoints)
+        {
+            // Adjust the Y position to be on top of the floor
+            Vector3 spawnPosition = new Vector3(point.x, floorHeight, point.z);
+
+            // Randomly choose an asset to spawn
+            GameObject assetPrefab = roomAssets[UnityEngine.Random.Range(0, roomAssets.Length)];
+            Instantiate(assetPrefab, spawnPosition, Quaternion.identity);
+        }
+    }
+
+    private List<Vector3> GetRandomSpawnPoints(RoomNode room, int numberOfPoints)
+    {
+        List<Vector3> spawnPoints = new List<Vector3>();
+        Vector2 bottomLeft = room.BottomLeftAreaCorner;
+        Vector2 topRight = room.TopRightAreaCorner;
+
+        for (int i = 0; i < numberOfPoints; i++)
+        {
+            float xPos = UnityEngine.Random.Range(bottomLeft.x + assetSpawnOffset, topRight.x - assetSpawnOffset);
+            float zPos = UnityEngine.Random.Range(bottomLeft.y + assetSpawnOffset, topRight.y - assetSpawnOffset);
+            spawnPoints.Add(new Vector3(xPos, 0, zPos));
+        }
+
+        return spawnPoints;
+    }
+
+
 }

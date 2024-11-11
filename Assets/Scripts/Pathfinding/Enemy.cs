@@ -1,134 +1,76 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class Enemy : MonoBehaviour
 {
-    public Transform player; // Reference to the player
-    public float moveSpeed = 5f; // Speed of the enemy
-    public float detectionDistance = 10f; // Maximum distance for detection
-    public float wanderRadius = 5f; // Radius for wandering
-    public float wanderTime = 3f; // Time to wander before choosing a new direction
-    private Vector3 startingPosition; // Starting position of the enemy
-    private bool playerInSight; // Flag to check if player is in sight
-    private float wanderTimer; // Timer for wandering
-    private Vector3 wanderTarget; // Target position for wandering
+
+    GameObject player;
+    NavMeshAgent agent;
+
+    [SerializeField] LayerMask groundLayer, playerLayer;
+
+    //Patrolling
+    Vector3 destPoint;
+    bool walkPointSet;
+    [SerializeField] float range;
+
+    //State Change
+    [SerializeField] float sightRange;
+    bool playerInSight;
 
     private void Start()
     {
-        // Store the starting position
-        startingPosition = transform.position;
-        wanderTimer = wanderTime; // Initialize wander timer
-        ChooseWanderTarget(); // Choose the initial wander target
+        agent = GetComponent<NavMeshAgent>();
+        player = GameObject.Find("Player");
     }
 
     private void Update()
     {
-        CheckPlayerVisibility();
+        // Check if player is in sight range
+        playerInSight = Physics.CheckSphere(transform.position, sightRange, playerLayer);
 
         if (playerInSight)
         {
-            MoveTowardsPlayer();
+            Chase();
         }
         else
         {
-            WanderAround();
+            Patrol();
         }
     }
 
-    private void CheckPlayerVisibility()
+    void Chase()
     {
-        // Calculate the direction to the player
-        Vector3 directionToPlayer = (player.position - transform.position).normalized;
+        agent.SetDestination(player.transform.position);
+    }
 
-        // Check if the player is within detection distance
-        float distanceToPlayer = Vector3.Distance(transform.position, player.position);
-        if (distanceToPlayer < detectionDistance)
+    void Patrol()
+    {
+        if (!walkPointSet)
         {
-            // Perform a raycast to check for obstacles between the enemy and player
-            RaycastHit hit;
-            if (Physics.Raycast(transform.position, directionToPlayer, out hit, distanceToPlayer))
-            {
-                // Check if the hit object is the player
-                if (hit.transform == player)
-                {
-                    playerInSight = true; // Player is visible
-                    Debug.Log("Player is in sight!"); // Debug log
-                }
-                else
-                {
-                    playerInSight = false; // Player is blocked by an obstacle
-                    Debug.Log("Player is blocked by an obstacle: " + hit.transform.name); // Debug log
-                }
-            }
-            else
-            {
-                playerInSight = false; // No hit means player is not visible
-            }
+            SearchForDest();
         }
-        else
+        if (walkPointSet)
         {
-            playerInSight = false; // Player is out of detection range
-            Debug.Log("Player is out of detection range."); // Debug log
+            agent.SetDestination(destPoint);
         }
-    }
-
-    private void MoveTowardsPlayer()
-    {
-        // Move the enemy towards the player
-        Vector3 directionToPlayer = (player.position - transform.position).normalized;
-        transform.position += directionToPlayer * moveSpeed * Time.deltaTime;
-
-        // Optional: Look at the player
-        Quaternion targetRotation = Quaternion.LookRotation(directionToPlayer);
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 5f);
-    }
-
-    private void WanderAround()
-    {
-        // Update the wander timer
-        wanderTimer -= Time.deltaTime;
-
-        // If the timer has run out, choose a new wander target
-        if (wanderTimer <= 0)
+        if (Vector3.Distance(transform.position, destPoint) < 10)
         {
-            ChooseWanderTarget();
-            wanderTimer = wanderTime; // Reset the timer
+            walkPointSet = false;
         }
-
-        // Move towards the wander target
-        Vector3 directionToWanderTarget = (wanderTarget - transform.position).normalized;
-        transform.position += directionToWanderTarget * moveSpeed * Time.deltaTime;
-
-        // Optional: Look towards the wander target
-        Quaternion targetRotation = Quaternion.LookRotation(directionToWanderTarget);
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 5f);
     }
 
-    private void ChooseWanderTarget()
+    void SearchForDest()
     {
-        // Choose a random point within the wander radius
-        float randomX = Random.Range(-wanderRadius, wanderRadius);
-        float randomZ = Random.Range(-wanderRadius, wanderRadius);
-        wanderTarget = new Vector3(transform.position.x + randomX, transform.position.y, transform.position.z + randomZ);
+        float z = Random.Range(-range, range);
+        float x = Random.Range(-range, range);
+
+        destPoint = new Vector3(transform.position.x + x, transform.position.y, transform.position.z + z);
+
+        if (Physics.Raycast(destPoint, Vector3.down, groundLayer))
+        {
+            walkPointSet = true;
+        }
     }
 
-    private void ReturnToStartingPoint()
-    {
-        // Move the enemy back to the starting position
-        Vector3 directionToStart = (startingPosition - transform.position).normalized;
-        transform.position += directionToStart * moveSpeed * Time.deltaTime;
-
-        // Optional: Look towards the starting position
-        Quaternion targetRotation = Quaternion.LookRotation(directionToStart);
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 5f);
-    }
-
-    private void OnDrawGizmos()
-    {
-        // Draw raycasts in the Scene view for debugging
-        Gizmos.color = Color.red;
-        Vector3 directionToPlayer = (player.position - transform.position).normalized;
-        Gizmos.DrawRay(transform.position, directionToPlayer * detectionDistance);
-    }
 }
