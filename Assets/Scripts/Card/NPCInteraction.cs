@@ -4,50 +4,56 @@ using UnityEngine;
 
 public class NPCInteraction : MonoBehaviour
 {
-    public float interactionRange = 3f;  // The range within which the player can interact with the NPC
+    public float interactionRange = 3f;  // Range within which the player can interact with the NPC
     private Transform playerTransform;   // Reference to the player's position
+    private Camera mainCamera;           // Reference to the main camera for detecting raycast hits
 
     private void Start()
     {
-        // Find the player's transform in the scene (assuming the player has a "Player" tag)
-        playerTransform = GameObject.FindGameObjectWithTag("Player").transform;
+        // Find the player transform and camera if not assigned
+        playerTransform = transform;
+        mainCamera = Camera.main;   // Assuming the main camera is tagged correctly
+
+        // Check if the main camera is assigned, and log an error if it's missing
+        if (mainCamera == null)
+        {
+            Debug.LogError("Main Camera is missing or not tagged correctly! Please ensure the camera is tagged as 'MainCamera'.");
+        }
     }
 
     private void Update()
     {
-        // Ensure playerTransform is assigned
-        if (playerTransform != null)
+        // Handle interaction when the player clicks or taps
+        if (Input.GetMouseButtonDown(0)) // Detect mouse click or touch input
         {
-            // Calculate the distance between the NPC and the player
-            float distanceToPlayer = Vector3.Distance(transform.position, playerTransform.position);
-
-            // If the player is within interaction range, listen for the player's input
-            if (distanceToPlayer <= interactionRange)
-            {
-                // If the player taps (on mobile) or clicks (on desktop), interact with the NPC
-                if (Input.GetMouseButtonDown(0)) // Left click or tap on mobile
-                {
-                    OnNPCInteract();
-                }
-            }
+            TryInteractWithNPC();
         }
     }
 
-    private void OnNPCInteract()
+    private void TryInteractWithNPC()
     {
-        // Debug message for interaction with the NPC (can be replaced with a sound effect or animation)
-        Debug.Log("Player interacted with the NPC!");
-
-        // Find the UI GameObject by tag (e.g., "UI") and activate it
-        GameObject uiCanvas = GameObject.FindGameObjectWithTag("UI");
-
-        if (uiCanvas != null)
+        // Check if the main camera is assigned before proceeding
+        if (mainCamera == null)
         {
-            uiCanvas.SetActive(true);  // Activate the UI
+            return;  // If the main camera is missing, skip the interaction logic
         }
-        else
+
+        // Cast a ray from the camera to where the player clicked or tapped
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+
+        // Check if the ray hits an NPC within the interaction range
+        if (Physics.Raycast(ray, out hit, interactionRange))
         {
-            Debug.LogWarning("UI GameObject with 'UI' tag not found!");
+            // Check if the hit object is an NPC
+            if (hit.collider != null && hit.collider.CompareTag("NPC"))
+            {
+                // Trigger interaction with the NPC (you can add more NPC-specific logic here if needed)
+                Debug.Log("Player interacted with NPC!");
+
+                // Log the NPC's name for debugging
+                Debug.Log("Interacted with: " + hit.collider.name);
+            }
         }
     }
 }
