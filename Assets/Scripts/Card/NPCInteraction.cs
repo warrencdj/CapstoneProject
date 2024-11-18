@@ -4,113 +4,70 @@ using UnityEngine;
 
 public class NPCInteraction : MonoBehaviour
 {
-    public float interactionRange = 3f;  // Range within which the player can interact with the NPC
-    private Transform playerTransform;   // Reference to the player's position
-    private Camera mainCamera;           // Reference to the main camera for detecting raycast hits
-
-    // References to the UI elements
-    public GameObject testCanvas;        // The canvas to show when interacting with NPC
-    public GameObject joystickCanvas;   // The joystick UI to deactivate during interaction
-
-    private bool isInteracting = false; // To track whether the player is interacting with an NPC
-
-    private void Start()
-    {
-        // Find the player transform and camera if not assigned
-        playerTransform = transform;
-        mainCamera = Camera.main;   // Assuming the main camera is tagged correctly
-
-        // Ensure the test canvas is initially inactive
-        if (testCanvas != null)
-        {
-            testCanvas.SetActive(false);
-        }
-        else
-        {
-            Debug.LogWarning("Test Canvas reference is missing!");
-        }
-
-        // Ensure the joystick canvas is active initially
-        if (joystickCanvas != null)
-        {
-            joystickCanvas.SetActive(true);
-        }
-        else
-        {
-            Debug.LogWarning("Joystick Canvas reference is missing!");
-        }
-    }
+    public GameObject lessonPanel; // Reference to the LessonPanel
+    public GameObject playerUI;   // Reference to the player UI GameObject
+    private static bool hasPlayerInteracted = false; // Tracks if the player has interacted before
 
     private void Update()
     {
-        // Handle interaction when the player clicks or taps
-        if (Input.GetMouseButtonDown(0)) // Detect mouse click or touch input
+        // Check for player interaction with the NPC (tap or click)
+        if (Input.GetMouseButtonDown(0)) // Left mouse button or screen tap
         {
-            TryInteractWithNPC();
-        }
-    }
+            RaycastHit hit;
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 
-    private void TryInteractWithNPC()
-    {
-        // Check if the main camera is assigned before proceeding
-        if (mainCamera == null)
-        {
-            return;  // If the main camera is missing, skip the interaction logic
-        }
-
-        // Cast a ray from the camera to where the player clicked or tapped
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-
-        // Check if the ray hits an NPC within the interaction range
-        if (Physics.Raycast(ray, out hit, interactionRange))
-        {
-            // Check if the hit object is an NPC
-            if (hit.collider != null && hit.collider.CompareTag("NPC"))
+            if (Physics.Raycast(ray, out hit))
             {
-                // Debug message for interaction with the NPC
-                Debug.Log("Player interacted with NPC!");
-
-                // Log the NPC's name for debugging
-                Debug.Log("Interacted with: " + hit.collider.name);
-
-                // Activate the test canvas and deactivate the joystick UI
-                if (testCanvas != null)
+                if (hit.collider.CompareTag("NPC")) // Check if the player tapped on an NPC
                 {
-                    testCanvas.SetActive(true);
+                    HandleNPCInteraction();
                 }
-                if (joystickCanvas != null)
-                {
-                    joystickCanvas.SetActive(false);
-                }
-
-                // Pause the game by setting the time scale to 0
-                Time.timeScale = 0f;
-
-                // Mark as interacting
-                isInteracting = true;
             }
         }
     }
 
-    public void EndInteraction()
+    private void HandleNPCInteraction()
     {
-        // This method can be called when the interaction is finished (e.g., the player closes the canvas)
-
-        // Deactivate the test canvas and reactivate the joystick UI
-        if (testCanvas != null)
+        // If this is the first interaction, show the lesson panel and disable the player UI
+        if (!hasPlayerInteracted)
         {
-            testCanvas.SetActive(false);
+            if (lessonPanel != null && playerUI != null)
+            {
+                lessonPanel.SetActive(true);        // Show the lesson panel
+                playerUI.SetActive(false);          // Disable the player UI
+                PauseGame();
+            }
+            else
+            {
+                Debug.LogWarning("LessonPanel or PlayerUI is not assigned in NPCInteraction!");
+            }
+
+            hasPlayerInteracted = true; // Mark that the player has interacted
         }
-        if (joystickCanvas != null)
+        else
         {
-            joystickCanvas.SetActive(true);
+            // Debug message when the player tries to interact again
+            Debug.Log("Lesson already shown. You can continue the game!");
         }
+    }
 
-        // Resume the game by setting the time scale back to 1
-        Time.timeScale = 1f;
+    private void PauseGame()
+    {
+        Time.timeScale = 0; // Pause the game
+    }
 
-        // Mark as not interacting
-        isInteracting = false;
+    public void CloseLessonPanel()
+    {
+        if (lessonPanel != null && playerUI != null)
+        {
+            lessonPanel.SetActive(false); // Hide the lesson panel
+            playerUI.SetActive(true);  // Enable the player UI
+            ResumeGame();
+        }
+    }
+
+    private void ResumeGame()
+    {
+        Time.timeScale = 1; // Resume the game
     }
 }
