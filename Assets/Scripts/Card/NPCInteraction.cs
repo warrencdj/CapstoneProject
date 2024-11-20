@@ -4,9 +4,10 @@ using UnityEngine;
 
 public class NPCInteraction : MonoBehaviour
 {
-    public GameObject lessonPanel; // Reference to the LessonPanel
-    public GameObject playerUI;   // Reference to the player UI GameObject
-    private static bool hasPlayerInteracted = false; // Tracks if the player has interacted before
+    public GameObject playerUI;          // Reference to the player UI GameObject
+    private static int currentLessonIndex = 0; // Tracks the current lesson index
+    public GameObject[] lessonPanels;    // Array of lesson panels to show in order
+    public static int totalLessons;      // Total number of lessons (set from the LessonManager)
 
     private void Update()
     {
@@ -20,50 +21,53 @@ public class NPCInteraction : MonoBehaviour
             {
                 if (hit.collider.CompareTag("NPC")) // Check if the player tapped on an NPC
                 {
-                    HandleNPCInteraction();
+                    HandleNPCInteraction(hit.collider.gameObject);
                 }
             }
         }
     }
 
-    private void HandleNPCInteraction()
+    private void HandleNPCInteraction(GameObject npc)
     {
-        // If this is the first interaction, show the lesson panel and disable the player UI
-        if (!hasPlayerInteracted)
+        if (currentLessonIndex < lessonPanels.Length)
         {
-            if (lessonPanel != null && playerUI != null)
+            // Show the current lesson panel and disable the player UI
+            if (lessonPanels[currentLessonIndex] != null && playerUI != null)
             {
-                lessonPanel.SetActive(true);        // Show the lesson panel
-                playerUI.SetActive(false);          // Disable the player UI
+                lessonPanels[currentLessonIndex].SetActive(true);  // Show the lesson panel
+                playerUI.SetActive(false);                        // Disable the player UI
                 PauseGame();
             }
-            else
-            {
-                Debug.LogWarning("LessonPanel or PlayerUI is not assigned in NPCInteraction!");
-            }
 
-            hasPlayerInteracted = true; // Mark that the player has interacted
+            // Increment the lesson index for the next interaction
+            currentLessonIndex++;
+
+            // Destroy the NPC after interaction
+            Destroy(npc);
         }
         else
         {
-            // Debug message when the player tries to interact again
-            Debug.Log("Lesson already shown. You can continue the game!");
+            Debug.Log("All lessons completed. Ready to start the game!");
+        }
+    }
+
+    public void CloseLessonPanel()
+    {
+        if (currentLessonIndex > 0 && currentLessonIndex <= lessonPanels.Length)
+        {
+            // Close the previous lesson panel and re-enable the player UI
+            if (lessonPanels[currentLessonIndex - 1] != null && playerUI != null)
+            {
+                lessonPanels[currentLessonIndex - 1].SetActive(false); // Hide the lesson panel
+                playerUI.SetActive(true);                            // Enable the player UI
+                ResumeGame();
+            }
         }
     }
 
     private void PauseGame()
     {
         Time.timeScale = 0; // Pause the game
-    }
-
-    public void CloseLessonPanel()
-    {
-        if (lessonPanel != null && playerUI != null)
-        {
-            lessonPanel.SetActive(false); // Hide the lesson panel
-            playerUI.SetActive(true);  // Enable the player UI
-            ResumeGame();
-        }
     }
 
     private void ResumeGame()
