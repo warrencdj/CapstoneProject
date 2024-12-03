@@ -49,8 +49,8 @@ public class Controller : MonoBehaviour
         }
 
         // Update Animator parameters
-        anim.SetFloat("InputX", Mathf.Abs(xInput)); // Horizontal movement
-        anim.SetBool("isGrounded", isGrounded); // Grounded status
+        //anim.SetFloat("InputX", Mathf.Abs(xInput)); // Horizontal movement
+        //anim.SetBool("isGrounded", isGrounded); // Grounded status
         anim.SetFloat("Blend", Mathf.Abs(xInput)); // Speed for blend tree
     }
 

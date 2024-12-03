@@ -9,6 +9,8 @@ TagManager:
   - UI
   - CardButton
   - PlayerEyes
+  - Wall
+  - Letter
   layers:
   - Default
   - TransparentFX

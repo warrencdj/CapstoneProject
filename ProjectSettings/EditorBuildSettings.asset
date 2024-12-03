@@ -11,9 +11,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Chaprter1Level1.unity
     guid: 6c21584fdcb982242ab2a34f2aa392a6
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Chapter1Gameplay/Chapter1Gameplay1.unity
     guid: 6df7d2e0f99c1254597aff4b98746160
+  - enabled: 1
+    path: Assets/TestArea/Scene/Endless.unity
+    guid: 774fe4062b9a44544884a7ffb545f683
   m_configObjects:
     com.unity.adaptiveperformance.loader_settings: {fileID: 11400000, guid: f75d9200d4e38e640b399827ccfbb952,
       type: 2}
