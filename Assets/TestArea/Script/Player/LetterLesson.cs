@@ -9,14 +9,13 @@ public class LetterLesson : MonoBehaviour
     public GameObject[] letterGameObjects;  // Letters placed on the map
     public GameObject[] lessonPanels;      // Corresponding lesson panels for each letter
     public GameObject playerUI;            // Player UI GameObject
-    public GameObject completionPanel;     // Completion panel for all letters collected
     public TextMeshProUGUI letterCounterText;  // TextMeshPro for showing collected letter count
 
     // Player movement and state
     private CharacterController characterController;
     private bool canMove = true;
     public float moveSpeed = 5f;
-    private int collectedLetterCount = 0;  // Track letters collected
+    public int collectedLetterCount = 0;  // Track letters collected
 
     void Start()
     {
@@ -36,9 +35,6 @@ public class LetterLesson : MonoBehaviour
 
     void Update()
     {
-        // Enforce Player UI state when the completion panel is active
-        EnforceUIState();
-
         // Handle player movement
         HandlePlayerMovement();
     }
@@ -55,7 +51,6 @@ public class LetterLesson : MonoBehaviour
     void InitializeUI()
     {
         UpdateLetterCounter();
-        if (completionPanel != null) completionPanel.SetActive(false);
         if (playerUI != null) playerUI.SetActive(true);
     }
 
@@ -68,7 +63,6 @@ public class LetterLesson : MonoBehaviour
         UpdateLetterCounter();
 
         ActivateLessonPanelForLetter(collectedLetter);
-        CheckForCompletion();
 
         collectedLetter.SetActive(false);
     }
@@ -96,20 +90,6 @@ public class LetterLesson : MonoBehaviour
         Debug.LogError($"No matching lesson panel found for letter: {collectedLetter.name}");
     }
 
-    // Check if all letters have been collected
-    void CheckForCompletion()
-    {
-        if (collectedLetterCount == letterGameObjects.Length)
-        {
-            if (completionPanel != null)
-            {
-                completionPanel.SetActive(true);  // Show the completion panel
-                Time.timeScale = 0;              // Pause the game
-                if (playerUI != null) playerUI.SetActive(false);  // Hide Player UI
-            }
-        }
-    }
-
     // Close a lesson panel and resume the game
     public void ClosePanel(int index)
     {
@@ -132,15 +112,6 @@ public class LetterLesson : MonoBehaviour
         if (letterCounterText != null)
         {
             letterCounterText.text = $"Letters: {collectedLetterCount}/{letterGameObjects.Length}";
-        }
-    }
-
-    // Force Player UI to remain hidden if completion panel is active
-    void EnforceUIState()
-    {
-        if (completionPanel != null && completionPanel.activeSelf && playerUI != null && playerUI.activeSelf)
-        {
-            playerUI.SetActive(false);
         }
     }
 
