@@ -6,156 +6,165 @@ using TMPro;
 public class QuizManager : MonoBehaviour
 {
     [TextArea]
-    public List<string> questions; // List of questions set in the Inspector
+    public List<string> questions; // List of questions
+    public List<Sprite> allAnswerSprites; // All possible answer sprites
 
-    public TextMeshPro titleText;    // Reference to the Title TextMeshPro
-    public TextMeshPro questionText; // Reference to the Question TextMeshPro
+    public TextMeshPro titleText;
+    public TextMeshPro questionText;
 
-    public List<Sprite> allAnswerSprites; // List of all available answer sprites (Korean vowels or letters)
-
-    // References to the answer option colliders (assuming 3 options)
     public AnswerOption answerOption1;
     public AnswerOption answerOption2;
     public AnswerOption answerOption3;
 
-    private int currentQuestionIndex = 0; // Tracks the current question
-    private Sprite correctAnswer;         // Holds the correct answer for the current question
-    private bool isQuizStarted = false;   // Tracks if the quiz has started
+    public GameObject stageClearPanel; // Reference to the stage clear panel UI
+    public GameObject playerUI; // Reference to the Player UI
+
+    private Queue<QuestionData> questionQueue; // Queue to track questions
+    private QuestionData currentQuestion; // Track the current question
+    private bool isQuizStarted = false;
+
+    private class QuestionData
+    {
+        public string QuestionText;
+        public Sprite CorrectAnswer;
+        public List<Sprite> AnswerChoices;
+    }
 
     void Start()
     {
-        // Display the initial message
         questionText.text = "Are you ready to play? Step on the green button to start.";
+        stageClearPanel.SetActive(false); // Initially hide the stage clear panel
+        playerUI.SetActive(true); // Ensure Player UI is active initially
     }
 
     public void StartQuiz()
     {
-        if (questions.Count > 0 && allAnswerSprites.Count >= questions.Count)
+        if (questions.Count > 0 && allAnswerSprites.Count >= 3)
         {
-            ShuffleQuestionsAndAnswers(); // Shuffle both questions and answers together
             isQuizStarted = true;
-            currentQuestionIndex = 0;
-            ShowQuestion();
+            questionQueue = GenerateQuestionQueue(); // Procedurally generate questions
+            ShowNextQuestion();
         }
         else
         {
-            questionText.text = "No questions or answers available!";
+            questionText.text = "Not enough data to start the quiz!";
         }
     }
 
-    public void ShowQuestion()
+    private Queue<QuestionData> GenerateQuestionQueue()
     {
-        if (currentQuestionIndex < questions.Count)
+        List<QuestionData> questionList = new List<QuestionData>();
+
+        for (int i = 0; i < questions.Count; i++)
         {
-            // Display the current question
-            questionText.text = questions[currentQuestionIndex];
+            string questionText = questions[i];
+            Sprite correctAnswer = allAnswerSprites[i];
 
-            // Generate and display answer choices
-            List<Sprite> answerChoices = GenerateAnswerChoices();
-            SetAnswerOptions(answerChoices); // Update the answer option sprites
-        }
-        else
-        {
-            questionText.text = "Quiz Complete!";
-            isQuizStarted = false;
-        }
-    }
-
-    private void ShuffleQuestionsAndAnswers()
-    {
-        // Shuffle questions and their corresponding answers together
-        for (int i = questions.Count - 1; i > 0; i--)
-        {
-            int randomIndex = Random.Range(0, i + 1);
-
-            // Swap questions
-            string tempQuestion = questions[i];
-            questions[i] = questions[randomIndex];
-            questions[randomIndex] = tempQuestion;
-
-            // Swap corresponding answers
-            Sprite tempAnswer = allAnswerSprites[i];
-            allAnswerSprites[i] = allAnswerSprites[randomIndex];
-            allAnswerSprites[randomIndex] = tempAnswer;
-        }
-    }
-
-    private List<Sprite> GenerateAnswerChoices()
-    {
-        List<Sprite> answerChoices = new List<Sprite>();
-
-        // Get the correct answer for the current question
-        correctAnswer = allAnswerSprites[currentQuestionIndex];
-        answerChoices.Add(correctAnswer); // Add the correct answer first
-
-        // Add random incorrect answers to the list
-        while (answerChoices.Count < 3) // Ensure we have 3 total choices
-        {
-            Sprite randomAnswer = allAnswerSprites[Random.Range(0, allAnswerSprites.Count)];
-
-            // Avoid duplicate answers, including the correct one
-            if (!answerChoices.Contains(randomAnswer))
+            // Generate answer choices
+            List<Sprite> answerChoices = new List<Sprite> { correctAnswer };
+            while (answerChoices.Count < 3)
             {
-                answerChoices.Add(randomAnswer);
+                Sprite randomAnswer = allAnswerSprites[Random.Range(0, allAnswerSprites.Count)];
+                if (!answerChoices.Contains(randomAnswer))
+                {
+                    answerChoices.Add(randomAnswer);
+                }
             }
+
+            // Shuffle answer choices
+            ShuffleList(answerChoices);
+
+            // Create a new QuestionData instance
+            QuestionData questionData = new QuestionData
+            {
+                QuestionText = questionText,
+                CorrectAnswer = correctAnswer,
+                AnswerChoices = answerChoices
+            };
+
+            questionList.Add(questionData);
         }
 
-        // Shuffle the final choices to randomize the order
-        ShuffleAnswers(answerChoices);
+        // Shuffle the question list to randomize question order
+        ShuffleList(questionList);
 
-        return answerChoices;
+        // Convert the list to a queue for easy processing
+        return new Queue<QuestionData>(questionList);
     }
 
-    private void ShuffleAnswers(List<Sprite> answerChoices)
+    private void ShowNextQuestion()
     {
-        for (int i = answerChoices.Count - 1; i > 0; i--)
+        if (questionQueue.Count > 0)
         {
-            int randomIndex = Random.Range(0, i + 1);
+            currentQuestion = questionQueue.Dequeue();
 
-            // Swap elements
-            Sprite temp = answerChoices[i];
-            answerChoices[i] = answerChoices[randomIndex];
-            answerChoices[randomIndex] = temp;
+            // Update the question text
+            questionText.text = currentQuestion.QuestionText;
+
+            // Assign answer choices to the answer options
+            answerOption1.UpdateAnswer(currentQuestion.AnswerChoices[0], currentQuestion.AnswerChoices[0] == currentQuestion.CorrectAnswer);
+            answerOption2.UpdateAnswer(currentQuestion.AnswerChoices[1], currentQuestion.AnswerChoices[1] == currentQuestion.CorrectAnswer);
+            answerOption3.UpdateAnswer(currentQuestion.AnswerChoices[2], currentQuestion.AnswerChoices[2] == currentQuestion.CorrectAnswer);
         }
-    }
-
-    private void SetAnswerOptions(List<Sprite> answerChoices)
-    {
-        // Assign the answer sprites and correct status to each AnswerOption
-        answerOption1.UpdateAnswer(answerChoices[0], answerChoices[0] == correctAnswer);
-        answerOption2.UpdateAnswer(answerChoices[1], answerChoices[1] == correctAnswer);
-        answerOption3.UpdateAnswer(answerChoices[2], answerChoices[2] == correctAnswer);
+        else
+        {
+            // When quiz is finished, show the stage clear panel with a delay
+            StartCoroutine(ShowStageClear());
+        }
     }
 
     public void AdvanceQuestion(bool correct)
     {
-        if (correct)
-        {
-            questionText.color = Color.green; // Feedback for correct answer
-            currentQuestionIndex++;           // Move to the next question
-        }
-        else
-        {
-            questionText.color = Color.red;   // Feedback for wrong answer
-        }
-
-        StartCoroutine(WaitAndProceed(correct));
+        StartCoroutine(HandleAnswerFeedback(correct));
     }
 
-    private IEnumerator WaitAndProceed(bool correct)
+    private IEnumerator HandleAnswerFeedback(bool correct)
     {
-        yield return new WaitForSeconds(1f); // Delay before showing the next question
+        questionText.color = correct ? Color.green : Color.red; // Feedback color
+        yield return new WaitForSeconds(1f); // Short delay for feedback
+        questionText.color = Color.white; // Reset color
 
-        // Show the next question if there are more questions
-        if (currentQuestionIndex < questions.Count)
+        if (correct)
         {
-            questionText.color = Color.white; // Reset text color
-            ShowQuestion();
+            ShowNextQuestion();
         }
         else
         {
-            questionText.text = "Quiz Complete!";
-            isQuizStarted = false;
+            ReshuffleAnswers(); // Reshuffle the answers for the current question
+        }
+    }
+
+    private void ReshuffleAnswers()
+    {
+        // Reshuffle the answer choices for the current question
+        ShuffleList(currentQuestion.AnswerChoices);
+
+        // Reassign the reshuffled answer choices to the answer options
+        answerOption1.UpdateAnswer(currentQuestion.AnswerChoices[0], currentQuestion.AnswerChoices[0] == currentQuestion.CorrectAnswer);
+        answerOption2.UpdateAnswer(currentQuestion.AnswerChoices[1], currentQuestion.AnswerChoices[1] == currentQuestion.CorrectAnswer);
+        answerOption3.UpdateAnswer(currentQuestion.AnswerChoices[2], currentQuestion.AnswerChoices[2] == currentQuestion.CorrectAnswer);
+    }
+
+    private IEnumerator ShowStageClear()
+    {
+        // Hide the player UI when the stage clear screen is shown
+        playerUI.SetActive(false);
+
+        // Wait for a short delay before showing the stage clear screen
+        yield return new WaitForSeconds(1f);
+
+        // Display the stage clear panel
+        stageClearPanel.SetActive(true);
+    }
+
+    private void ShuffleList<T>(List<T> list)
+    {
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int randomIndex = Random.Range(0, i + 1);
+            T temp = list[i];
+            list[i] = list[randomIndex];
+            list[randomIndex] = temp;
         }
     }
 }

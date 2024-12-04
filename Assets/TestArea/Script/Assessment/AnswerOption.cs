@@ -8,15 +8,25 @@ public class AnswerOption : MonoBehaviour
     public bool isCorrect;        // Flag to check if this is the correct answer
 
     private SpriteRenderer spriteRenderer;
+    private Collider answerCollider; // Reference to the collider
+    private bool isInteractable = true; // Tracks if the answer can be interacted with
+
+    [SerializeField]
+    private float cooldownDuration = 1f; // Cooldown duration (in seconds)
 
     void Start()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
+        answerCollider = GetComponent<Collider>();
 
-        // If SpriteRenderer is missing, add one
+        // If SpriteRenderer or Collider is missing, add one
         if (spriteRenderer == null)
         {
             spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
+        }
+        if (answerCollider == null)
+        {
+            answerCollider = gameObject.AddComponent<BoxCollider>();
         }
     }
 
@@ -30,11 +40,14 @@ public class AnswerOption : MonoBehaviour
     // Method to handle when the player touches the answer option
     private void OnTriggerEnter(Collider other)
     {
-        // Check if the object touching the answer option is the player
-        if (other.CompareTag("Player"))
+        // Check if the object touching the answer option is the player and it's interactable
+        if (isInteractable && other.CompareTag("Player"))
         {
             // Call the OnAnswerSelected method to check if the answer is correct
             OnAnswerSelected();
+
+            // Start the cooldown to prevent immediate re-interaction
+            StartCoroutine(AnswerCooldown());
         }
     }
 
@@ -53,5 +66,17 @@ public class AnswerOption : MonoBehaviour
             // Notify QuizManager to retry the same question
             FindObjectOfType<QuizManager>().AdvanceQuestion(false);
         }
+    }
+
+    // Cooldown to make the answer temporarily unselectable
+    private IEnumerator AnswerCooldown()
+    {
+        isInteractable = false; // Disable interaction
+        answerCollider.enabled = false; // Disable the collider
+
+        yield return new WaitForSeconds(cooldownDuration); // Wait for the cooldown duration
+
+        isInteractable = true; // Enable interaction
+        answerCollider.enabled = true; // Enable the collider
     }
 }

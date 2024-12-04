@@ -17,6 +17,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/TestArea/Scene/LessonLevel/VowelLevel.unity
     guid: 774fe4062b9a44544884a7ffb545f683
+  - enabled: 1
+    path: Assets/TestArea/Scene/LessonLevel/ConsonantLevel.unity
+    guid: ce8e1460f6028a142a411ee21fd95d73
   m_configObjects:
     com.unity.adaptiveperformance.loader_settings: {fileID: 11400000, guid: f75d9200d4e38e640b399827ccfbb952,
       type: 2}
